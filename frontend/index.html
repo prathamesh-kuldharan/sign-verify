@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignVerify — AI Signature Authenticator</title>
+  <meta name="description" content="Upload a handwritten signature and instantly find out if it's genuine or forged using AI-powered analysis." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Background particles -->
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <span class="brand-icon">✦</span>
+      <span class="brand-name">SignVerify</span>
+    </div>
+    <div class="nav-right">
+      <div class="nav-status" id="modelStatusBadge">
+        <span class="dot dot--checking"></span>
+        <span id="modelStatusText">Checking...</span>
+      </div>
+      <button class="admin-btn" id="adminBtn" onclick="toggleAdmin()" title="Admin access">
+        <span id="adminBtnIcon">🔒</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero">
+    <h1 class="hero-title">
+      Intelligent Signature <br />
+      <span class="gradient-text">Authentication</span>
+    </h1>
+    <p class="hero-subtitle">
+      Upload any handwritten signature and our KNN model analyzes pixel patterns to detect forgery in seconds.
+    </p>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="container">
+
+    <!-- STEPS -->
+    <section class="steps-section" id="stepsSection" aria-label="How it works" style="display:none">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h3>Upload Dataset</h3>
+          <p>Add genuine &amp; forged signature samples to train the model.</p>
+        </div>
+      </div>
+      <div class="step-divider" aria-hidden="true">→</div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h3>Train Model</h3>
+          <p>One-click KNN training on your signature dataset.</p>
+        </div>
+      </div>
+      <div class="step-divider" aria-hidden="true">→</div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h3>Verify</h3>
+          <p>Upload a test signature — get a genuine/forged verdict instantly.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABS -->
+    <div class="tab-bar" id="tabBar" role="tablist" style="display:none">
+      <button class="tab tab--active" id="tab-predict" role="tab" aria-selected="true" aria-controls="panel-predict" onclick="switchTab('predict')">
+        <span>🔍</span> Verify Signature
+      </button>
+      <button class="tab tab--admin" id="tab-train" role="tab" aria-selected="false" aria-controls="panel-train" onclick="switchTab('train')" style="display:none">
+        <span>⚙️</span> Train Model
+      </button>
+      <button class="tab tab--admin" id="tab-dataset" role="tab" aria-selected="false" aria-controls="panel-dataset" onclick="switchTab('dataset')" style="display:none">
+        <span>📁</span> Upload Dataset
+      </button>
+    </div>
+
+    <!-- PANEL: PREDICT -->
+    <section class="panel" id="panel-predict" role="tabpanel" aria-labelledby="tab-predict">
+      <div class="panel-inner">
+        <div class="upload-area" id="dropZonePredict"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event, 'dropZonePredict')"
+          ondrop="handleDrop(event, 'predictFile')"
+          onclick="document.getElementById('predictFile').click()">
+          <div class="upload-icon" id="predictPreviewWrap">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+          </div>
+          <p class="upload-label">Drag &amp; drop signature image</p>
+          <p class="upload-sub">or click to browse &nbsp;·&nbsp; PNG, JPG, BMP supported</p>
+          <img id="predictPreview" class="upload-preview" src="" alt="Signature preview" />
+        </div>
+        <input type="file" id="predictFile" accept="image/*" style="display:none" onchange="onPredictFileSelected(event)" />
+
+        <button class="btn btn--primary" id="predictBtn" onclick="runPredict()" disabled>
+          <span class="btn-icon">🔍</span>
+          Analyze Signature
+        </button>
+
+        <!-- RESULT -->
+        <div class="result-box" id="resultBox" style="display:none">
+          <div class="result-icon" id="resultIcon"></div>
+          <div class="result-label" id="resultLabel"></div>
+          <div class="result-confidence">
+            <span>Confidence</span>
+            <div class="confidence-track">
+              <div class="confidence-fill" id="confidenceFill"></div>
+            </div>
+            <span id="confidenceValue"></span>
+          </div>
+          <p class="result-hint" id="resultHint"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL: TRAIN -->
+    <section class="panel hidden" id="panel-train" role="tabpanel" aria-labelledby="tab-train">
+      <div class="panel-inner panel-inner--center">
+        <div class="model-stats" id="modelStats">
+          <div class="stat-card">
+            <div class="stat-value" id="statGenuine">—</div>
+            <div class="stat-name">Genuine Samples</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statForged">—</div>
+            <div class="stat-name">Forged Samples</div>
+          </div>
+          <div class="stat-card stat-card--accent">
+            <div class="stat-value" id="statAccuracy">—</div>
+            <div class="stat-name">Model Accuracy</div>
+          </div>
+        </div>
+
+        <button class="btn btn--primary" id="trainBtn" onclick="runTrain()">
+          <span class="btn-icon">⚡</span>
+          Start Training
+        </button>
+
+        <div class="train-log" id="trainLog" style="display:none">
+          <div class="log-line" id="trainLogText">Initializing...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL: DATASET -->
+    <section class="panel hidden" id="panel-dataset" role="tabpanel" aria-labelledby="tab-dataset">
+      <div class="panel-inner">
+        <div class="dataset-toggle" role="group" aria-label="Signature type">
+          <button class="toggle-btn toggle-btn--active" id="toggleGenuine" onclick="selectLabel('genuine')">✅ Genuine</button>
+          <button class="toggle-btn" id="toggleForged" onclick="selectLabel('forged')">❌ Forged</button>
+        </div>
+        <p class="panel-hint">Selected: <strong id="selectedLabel">genuine</strong></p>
+
+        <div class="upload-area upload-area--multi" id="dropZoneDataset"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event, 'dropZoneDataset')"
+          ondrop="handleDrop(event, 'datasetFiles')"
+          onclick="document.getElementById('datasetFiles').click()">
+          <div class="upload-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+            </svg>
+          </div>
+          <p class="upload-label">Drop multiple signature images</p>
+          <p class="upload-sub">PNG, JPG, BMP · They will be added to the selected category</p>
+        </div>
+        <input type="file" id="datasetFiles" accept="image/*" multiple style="display:none" onchange="onDatasetSelected(event)" />
+
+        <div class="file-list" id="datasetFileList"></div>
+
+        <button class="btn btn--secondary" id="uploadDatasetBtn" onclick="uploadDataset()" disabled>
+          <span class="btn-icon">📤</span>
+          Upload to Dataset
+        </button>
+        <div class="upload-feedback" id="datasetFeedback"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>SignVerify &nbsp;·&nbsp; KNN-based Signature Forensics &nbsp;·&nbsp; Built with OpenCV &amp; scikit-learn</p>
+  </footer>
+
+  <script src="app.js?v=5"></script>
+</body>
+</html>
