@@ -5,7 +5,11 @@
 const API = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:5000"
     : window.location.origin;
-    
+
+// ---- ADMIN CONFIG ----
+const ADMIN_PASSWORD = "admin123"; 
+let isAdmin = false;    
+
 // ---- STATE ----
 let predictFile  = null;
 let datasetLabel = "genuine";
